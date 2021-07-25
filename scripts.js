@@ -10,43 +10,62 @@ const Modal = {
 }
 
 
-const transactions = [
-    {
-        id:1,
+
+const Transaction = {
+    all:[{
         description: 'Luz',
         amount: -50000,
         date: '23/01/2021'
     },
     {
-        id:2,
         description: 'Website',
         amount: 500000,
         date: '23/01/2021'
     },
     {
-        id:3,
         description: 'Internet',
         amount: -20000,
         date: '23/01/2021'
     },
     {
-        id:4,
         description: 'App',
         amount: 50000,
         date: '23/01/2021'
+    }],
+
+    add(transaction){
+        Transaction.all.push(transaction);
+        App.reload()
     },
-]
+    remove(index){
+        Transaction.all.splice(index,1)
 
-
-const Transaction = {
+        App.reload()
+    },
     incomes(){
-        //entradas
+        let income = 0;
+
+        Transaction.all.forEach(transaction => {
+            if (transaction.amount > 0){
+                income += transaction.amount; 
+            }
+        })
+
+        return income;
     },
     expenses(){
-        //saidas
+        let expense = 0;
+
+        Transaction.all.forEach(transaction => {
+            if (transaction.amount < 0){
+                expense += transaction.amount; 
+            }
+        })
+
+        return expense;
     },
     total(){    
-        //entradas - saidas
+        return Transaction.incomes() + Transaction.expenses();
     }
 }
 
@@ -62,8 +81,70 @@ const Utils = {
             style: "currency",
             currency: "BRL"
         })
-        
+
         return signal + value
+    },
+    formatAmount(value){
+        value = Number(value) * 100
+        return value
+    },
+    formatDate(date){
+        const splitDate = date.split("-")
+        return `${splitDate[2]}/${splitDate[1]}/${splitDate[0]}`
+    }
+}
+
+const Form = {
+    description: document.querySelector("input#description"),
+    amount: document.querySelector("input#amount"),
+    date: document.querySelector("input#date"),
+
+    getValues(){
+        return{
+            description: Form.description.value,
+            amount: Form.amount.value,
+            date: Form.date.value,
+        }
+    },
+    validateFields(){
+        const {description,amount,date} = Form.getValues();
+        
+        if( description.trim()==="" || 
+            amount.trim()==="" || 
+            date.trim()===""){
+                throw new Error("Preencha todos os dados!");
+        }
+    },
+    formatValues(){
+        let {description,amount,date} = Form.getValues();
+
+        amount = Utils.formatAmount(amount)
+        date = Utils.formatDate(date)
+        return {
+            description,
+            amount,
+            date
+        }
+    },
+    clearFields(){
+        Form.description.value = "",
+        Form.amount.value = "",
+        Form.date.value = ""
+    },
+    submit(event){
+        event.preventDefault();
+
+        try{
+            Form.validateFields();
+            const transaction = Form.formatValues();
+            Transaction.add(transaction);
+            Form.clearFields();
+            Modal.close();
+        }catch (error){
+            alert(error.message)
+        }
+
+
     }
 }
 
@@ -92,11 +173,39 @@ const DOM = {
         `
 
         return html
+    },
+    updateBalance(){
+        document.getElementById('incomeDisplay')
+                .innerHTML = Utils.formatCurrency(Transaction.incomes())
+        document.getElementById('expenseDisplay')
+                .innerHTML = Utils.formatCurrency(Transaction.expenses())
+        document.getElementById('totalDisplay')
+                .innerHTML = Utils.formatCurrency(Transaction.total())
+    },
+    clearTransactions(){
+        DOM.transactionsContainer.innerHTML = ""
     }
 }
 
 
 
-transactions.forEach(function (transaction){
-    DOM.addTransaction(transaction)
-})
+
+const App = {
+    init(){
+        
+        Transaction.all.forEach(transaction =>{
+            DOM.addTransaction(transaction)
+        })
+
+
+        DOM.updateBalance()
+    },
+    reload(){
+        DOM.clearTransactions(),
+        App.init()
+    }
+}
+
+
+App.init()
+
